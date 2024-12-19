@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button"
 import { loadRandomImage, cutImageIntoPieces } from '../utils/imageUtils'
 import { useSound } from '../hooks/useSound'
 import { useRouter } from 'next/navigation'
+import { Volume2, VolumeX } from "lucide-react"
 
 interface GameProps {
   difficulty: number
+  imageUrl: string
 }
 
 interface PiecePosition {
@@ -28,7 +30,7 @@ interface GamePiece {
   image: string
 }
 
-export default function Game({ difficulty }: GameProps) {
+export default function Game({ difficulty, imageUrl }: GameProps) {
   const router = useRouter()
   const targetAreaRef = useRef<HTMLDivElement>(null)
   const [image, setImage] = useState<string | null>(null)
@@ -38,13 +40,40 @@ export default function Game({ difficulty }: GameProps) {
   const [time, setTime] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    // 從 localStorage 讀取音效設定
+    const savedSettings = localStorage.getItem('gameSettings')
+    const parsedSettings = savedSettings ? JSON.parse(savedSettings) : null
+    return parsedSettings?.soundEnabled ?? true
+  })
 
   const playDropSound = useSound('/sounds/drop.mp3')
   const playCompleteSound = useSound('/sounds/complete.mp3')
 
+  // 當音效設定改變時，立即更新 localStorage
+  const handleSoundToggle = () => {
+    const newSoundEnabled = !soundEnabled
+    setSoundEnabled(newSoundEnabled)
+    localStorage.setItem('gameSettings', JSON.stringify({
+      soundEnabled: newSoundEnabled
+    }))
+  }
+
   useEffect(() => {
-    loadGame()
-  }, [difficulty])
+    const settings = localStorage.getItem('gameSettings')
+    if (settings) {
+      const { soundEnabled, isCustomImage, customImage } = JSON.parse(settings)
+      setSoundEnabled(soundEnabled)
+      
+      if (isCustomImage && customImage) {
+        loadGame(customImage)
+      } else {
+        loadGame(imageUrl)
+      }
+    } else {
+      loadGame(imageUrl)
+    }
+  }, [difficulty, imageUrl])
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -68,14 +97,13 @@ export default function Game({ difficulty }: GameProps) {
     }))
   }
 
-  const loadGame = async () => {
+  const loadGame = async (imgUrl: string) => {
     try {
       setError(null)
-      const imageUrl = await loadRandomImage()
-      setImage(imageUrl)
+      setImage(imgUrl)
       const rows = Math.sqrt(difficulty)
       const cols = rows
-      const cutPieces = await cutImageIntoPieces(imageUrl, rows, cols)
+      const cutPieces = await cutImageIntoPieces(imgUrl, rows, cols)
       
       const gamePieces = cutPieces.map((image, index) => ({
         id: index,
@@ -133,14 +161,12 @@ export default function Game({ difficulty }: GameProps) {
   const handlePieceDrop = (pieceId: number, x?: number, y?: number, targetPosition?: number | null) => {
     let finalTargetPosition = targetPosition
 
-    // 如果提供了座標，嘗試找到最近的目標位置
     if (x !== undefined && y !== undefined) {
       finalTargetPosition = findClosestTargetPosition(x, y)
     }
 
     const newPieces = [...pieces]
     
-    // 如果有其他片段在目標位置，將其移出
     if (finalTargetPosition !== null) {
       const pieceAtTarget = newPieces.find(p => p.currentPosition === finalTargetPosition)
       if (pieceAtTarget) {
@@ -148,14 +174,15 @@ export default function Game({ difficulty }: GameProps) {
       }
     }
     
-    // 更新當前片段的位置
     const piece = newPieces.find(p => p.id === pieceId)
     if (piece) {
       piece.currentPosition = finalTargetPosition
     }
     
     setPieces(newPieces)
-    playDropSound()
+    if (soundEnabled) {
+      playDropSound()
+    }
     checkCompletion(newPieces)
   }
 
@@ -164,12 +191,18 @@ export default function Game({ difficulty }: GameProps) {
     if (isCompleted) {
       setCompleted(true)
       setIsActive(false)
-      playCompleteSound()
+      if (soundEnabled) {
+        playCompleteSound()
+      }
     }
   }
 
   const handleRestart = () => {
-    loadGame()
+    setPieces(pieces.map(piece => ({ ...piece, currentPosition: null })))
+    setPiecePositions(generateRandomPositions(difficulty))
+    setCompleted(false)
+    setTime(0)
+    setIsActive(true)
   }
 
   const handleBack = () => {
@@ -197,9 +230,21 @@ export default function Game({ difficulty }: GameProps) {
     <DndProvider backend={Backend}>
       <div className="flex flex-col items-center space-y-4 p-4">
         <div className="flex items-center justify-between w-full max-w-7xl">
-          <Button variant="outline" onClick={handleBack}>
-            返回選擇難度
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={handleBack}>
+              返回設定
+            </Button>
+            <div 
+              className="cursor-pointer p-2 hover:bg-gray-100 rounded-full transition-colors"
+              onClick={handleSoundToggle}
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-6 w-6 text-green-500" />
+              ) : (
+                <VolumeX className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+          </div>
           <div className="text-xl font-bold">時間: {formatTime(time)}</div>
         </div>
         
