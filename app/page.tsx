@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Volume2, VolumeX } from "lucide-react"
@@ -29,19 +29,25 @@ export default function Home() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCategory, setSelectedCategory] = useState(imageCategories[0].id)
-  const [settings, setSettings] = useState<GameSettings>(() => {
-    // 從 localStorage 讀取音效設定
-    const savedSettings = localStorage.getItem('gameSettings')
-    const parsedSettings = savedSettings ? JSON.parse(savedSettings) : null
-    
-    return {
-      difficulty: '9',
-      soundEnabled: parsedSettings?.soundEnabled ?? true,
-      selectedImage: imageCategories[0].images[0].src,
-      customImage: null,
-      isCustomImage: false
-    }
+  const [settings, setSettings] = useState<GameSettings>({
+    difficulty: '9',
+    soundEnabled: true,
+    selectedImage: imageCategories[0].images[0].src,
+    customImage: null,
+    isCustomImage: false
   })
+
+  // 在客戶端加載完成後讀取 localStorage 設定
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('gameSettings')
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings)
+      setSettings(prev => ({
+        ...prev,
+        soundEnabled: parsedSettings?.soundEnabled ?? prev.soundEnabled
+      }))
+    }
+  }, [])
 
   // 當音效設定改變時，立即更新 localStorage
   const handleSoundToggle = () => {
@@ -93,12 +99,12 @@ export default function Home() {
       return
     }
 
-    // 將音效設定存儲到 localStorage
-    localStorage.setItem('gameSettings', JSON.stringify({
-      soundEnabled: settings.soundEnabled
-    }))
-
     try {
+      // 將音效設定存儲到 localStorage
+      localStorage.setItem('gameSettings', JSON.stringify({
+        soundEnabled: settings.soundEnabled
+      }))
+
       // 如果是自訂圖片，將圖片數據存儲到 sessionStorage
       if (settings.isCustomImage && settings.selectedImage) {
         // 確保圖片數據是有效的 base64 字串
@@ -207,10 +213,12 @@ export default function Home() {
                     }`}
                     onClick={() => handleSelectDefaultImage(img.src)}
                   >
-                    <img
+                    <Image
                       src={img.src}
                       alt={img.name}
-                      className="w-full h-full object-cover"
+                      className="object-cover"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   </div>
                 ))}
@@ -238,10 +246,12 @@ export default function Home() {
             </div>
             {settings.isCustomImage && settings.selectedImage && (
               <div className="relative aspect-video rounded-lg overflow-hidden mt-2">
-                <img
+                <Image
                   src={settings.selectedImage}
                   alt="自訂圖片預覽"
-                  className="w-full h-full object-cover"
+                  className="object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 100vw"
                 />
               </div>
             )}

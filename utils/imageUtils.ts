@@ -1,5 +1,8 @@
 'use client'
 
+/**
+ * 驗證並處理上傳的圖片，包括大小和尺寸的檢查
+ */
 export const validateAndProcessImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     // 檢查檔案大小（限制為 5MB）
@@ -66,74 +69,56 @@ export const validateAndProcessImage = (file: File): Promise<string> => {
   });
 };
 
-export const loadRandomImage = async (imageUrl: string): Promise<string> => {
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) throw new Error('無法載入圖片');
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error('載入圖片失敗:', error);
-    throw error;
-  }
-};
-
+/**
+ * 將圖片切割成拼圖片段
+ */
 export const cutImageIntoPieces = (imageUrl: string, rows: number, cols: number): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     img.onload = () => {
-      const pieces: string[] = [];
-      const pieceWidth = img.width / cols;
-      const pieceHeight = img.height / rows;
-      
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('無法創建畫布上下文'));
-        return;
-      }
-
-      // 設置每個拼圖片段的大小
-      canvas.width = pieceWidth;
-      canvas.height = pieceHeight;
-
-      // 切割圖片
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(
-            img,
-            x * pieceWidth, y * pieceHeight,
-            pieceWidth, pieceHeight,
-            0, 0,
-            pieceWidth, pieceHeight
-          );
-          pieces.push(canvas.toDataURL('image/jpeg', 0.8));
+      try {
+        const pieces: string[] = [];
+        const pieceWidth = img.width / cols;
+        const pieceHeight = img.height / rows;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('無法創建畫布上下文');
         }
-      }
 
-      resolve(pieces);
+        // 設置每個拼圖片段的大小
+        canvas.width = pieceWidth;
+        canvas.height = pieceHeight;
+
+        // 切割圖片
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(
+              img,
+              x * pieceWidth, y * pieceHeight,
+              pieceWidth, pieceHeight,
+              0, 0,
+              pieceWidth, pieceHeight
+            );
+            pieces.push(canvas.toDataURL('image/jpeg', 0.8));
+          }
+        }
+
+        resolve(pieces);
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error('處理圖片時發生錯誤'));
+      }
     };
 
     img.onerror = () => reject(new Error('圖片載入失敗'));
     
-    // 如果是 base64 圖片，直接使用
-    if (imageUrl.startsWith('data:image')) {
-      img.src = imageUrl;
-    } else {
-      // 如果是一般 URL，先轉換為 base64
-      loadRandomImage(imageUrl)
-        .then(base64 => img.src = base64)
-        .catch(reject);
-    }
+    // 設置圖片來源
+    img.src = imageUrl;
   });
 };
 

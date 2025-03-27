@@ -21,24 +21,21 @@ export default function GamePage({
   useEffect(() => {
     const loadImage = () => {
       try {
-        // 根據圖片類型載入對應的圖片
         if (searchParams.imageType === 'custom') {
-          console.log('正在載入自訂圖片...')  // 除錯用
-          const customImage = sessionStorage.getItem('customPuzzleImage')
-          console.log('從 sessionStorage 讀取的圖片:', customImage ? '有數據' : '無數據')  // 除錯用
-          
-          if (customImage && customImage.startsWith('data:image')) {
-            console.log('圖片數據有效，設置圖片 URL')  // 除錯用
-            setImageUrl(customImage)
-          } else {
-            console.error('找不到有效的自訂圖片')
-            // 如果找不到自訂圖片或圖片無效，返回首頁
-            alert('圖片載入失敗，請重新選擇圖片')
-            router.push('/')
-            return
+          // 確保在客戶端執行
+          if (typeof window !== 'undefined') {
+            const customImage = sessionStorage.getItem('customPuzzleImage')
+            
+            if (customImage && customImage.startsWith('data:image')) {
+              setImageUrl(customImage)
+            } else {
+              console.error('找不到有效的自訂圖片')
+              alert('圖片載入失敗，請重新選擇圖片')
+              router.push('/')
+              return
+            }
           }
         } else if (searchParams.image) {
-          console.log('載入預設圖片:', searchParams.image)  // 除錯用
           setImageUrl(searchParams.image)
         } else {
           console.error('未提供圖片參數')
@@ -58,14 +55,14 @@ export default function GamePage({
 
   if (!imageUrl) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="text-xl">載入中...</div>
+      <main className="h-[calc(100vh-1rem)] flex items-center justify-center bg-gray-50">
+        <div className="text-lg font-medium">載入中...</div>
       </main>
     )
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
+    <main className="h-[calc(100vh-1rem)] flex flex-col items-center justify-center p-2 sm:p-4 bg-gray-50 overflow-hidden">
       <Game difficulty={difficulty} imageUrl={imageUrl} />
     </main>
   )

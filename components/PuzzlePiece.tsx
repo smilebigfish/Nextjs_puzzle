@@ -2,6 +2,7 @@
 
 import { useDrag, useDrop } from 'react-dnd'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
 interface PuzzlePieceProps {
@@ -40,7 +41,6 @@ export default function PuzzlePiece({ index, image, onDrop, isInTarget = false }
 
   useEffect(() => {
     if (isDragging && !dragImage) {
-      // 創建拖曳時的預覽圖
       const div = document.createElement('div')
       div.style.position = 'fixed'
       div.style.pointerEvents = 'none'
@@ -49,17 +49,16 @@ export default function PuzzlePiece({ index, image, onDrop, isInTarget = false }
       
       const img = document.createElement('img')
       img.src = image
-      img.style.width = '100px'
-      img.style.height = '100px'
+      img.style.width = '80px'
+      img.style.height = '80px'
       img.style.objectFit = 'cover'
       img.style.borderRadius = '4px'
-      img.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)'
+      img.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)'
       
       div.appendChild(img)
       document.body.appendChild(div)
       setDragImage(div)
     } else if (!isDragging && dragImage) {
-      // 清理預覽圖
       document.body.removeChild(dragImage)
       setDragImage(null)
     }
@@ -68,8 +67,8 @@ export default function PuzzlePiece({ index, image, onDrop, isInTarget = false }
   useEffect(() => {
     const updateDragImage = (e: MouseEvent) => {
       if (isDragging && dragImage) {
-        dragImage.style.left = `${e.clientX - 50}px`
-        dragImage.style.top = `${e.clientY - 50}px`
+        dragImage.style.left = `${e.clientX - 40}px`
+        dragImage.style.top = `${e.clientY - 40}px`
       }
     }
 
@@ -84,30 +83,40 @@ export default function PuzzlePiece({ index, image, onDrop, isInTarget = false }
 
   return (
     <motion.div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        if (node) {
+          drag(node);
+          drop(node);
+        }
+      }}
       className={`relative w-full h-full cursor-move transition-transform ${
-        isInTarget ? 'hover:scale-105' : 'hover:scale-110'
+        isInTarget ? 'hover:scale-103' : 'hover:scale-105'
       }`}
       initial={{ scale: 1 }}
       animate={{
-        scale: isDragging ? 1.1 : 1,
-        opacity: isDragging ? 0.5 : 1,
-        boxShadow: isOver ? '0 0 0 2px #4CAF50' : 'none',
+        scale: isDragging ? 1.08 : 1,
+        opacity: isDragging ? 0.7 : 1,
+        boxShadow: isOver 
+          ? '0 0 0 2px #4CAF50, 0 4px 8px rgba(0, 0, 0, 0.1)' 
+          : isDragging 
+            ? '0 4px 8px rgba(0, 0, 0, 0.1)' 
+            : '0 1px 3px rgba(0, 0, 0, 0.05)',
+        zIndex: isDragging ? 10 : 1,
       }}
-      transition={{ duration: 0.2 }}
-      style={{
-        touchAction: 'none',
-      }}
+      transition={{ duration: 0.15 }}
+      style={{ touchAction: 'none' }}
     >
-      <img
-        src={image}
-        alt={`拼圖片段 ${index + 1}`}
-        className="w-full h-full object-cover select-none rounded-sm"
-        draggable={false}
-        style={{
-          aspectRatio: '1/1',
-        }}
-      />
+      <div className="relative w-full h-full overflow-hidden rounded-sm" style={{ aspectRatio: '1/1' }}>
+        <Image
+          src={image}
+          alt={`拼圖片段 ${index + 1}`}
+          className="object-cover select-none"
+          fill
+          draggable={false}
+          sizes="(max-width: 768px) 100vw, 150px"
+          priority={isInTarget}
+        />
+      </div>
     </motion.div>
   )
 }
