@@ -1,9 +1,18 @@
 'use client'
 
 /**
+ * 檢查是否在瀏覽器環境下
+ */
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+/**
  * 驗證並處理上傳的圖片，包括大小和尺寸的檢查
  */
 export const validateAndProcessImage = (file: File): Promise<string> => {
+  if (!isBrowser) {
+    return Promise.reject(new Error('此函數只能在瀏覽器環境中執行'));
+  }
+
   return new Promise((resolve, reject) => {
     // 檢查檔案大小（限制為 5MB）
     if (file.size > 5 * 1024 * 1024) {
@@ -73,6 +82,10 @@ export const validateAndProcessImage = (file: File): Promise<string> => {
  * 將圖片切割成拼圖片段
  */
 export const cutImageIntoPieces = (imageUrl: string, rows: number, cols: number): Promise<string[]> => {
+  if (!isBrowser) {
+    return Promise.resolve(Array(rows * cols).fill(''));
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
